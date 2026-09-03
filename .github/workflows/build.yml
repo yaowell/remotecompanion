@@ -15,6 +15,10 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install Dependencies
+        run: |
+          brew install ldid
+
       - name: Install Theos & iOS 16.5 SDK
         run: |
           sudo mkdir -p /opt
@@ -22,7 +26,6 @@ jobs:
           sudo ln -s $HOME/theos /opt/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-          # 直接浅克隆 theos/sdks 仓库，稳妥获取完整的 iPhoneOS16.5.sdk
           git clone --depth=1 https://github.com/theos/sdks.git $HOME/sdks-repo
           mkdir -p $HOME/theos/sdks
           cp -R $HOME/sdks-repo/iPhoneOS16.5.sdk $HOME/theos/sdks/
