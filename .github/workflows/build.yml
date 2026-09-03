@@ -15,28 +15,27 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Theos & Official SDKs
+      - name: Install Theos & iOS 16.5 SDK
         run: |
           sudo mkdir -p /opt
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
           sudo ln -s $HOME/theos /opt/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-          rm -rf $HOME/theos/sdks
-          git clone --depth=1 https://github.com/theos/sdks.git $HOME/theos/sdks
+          # 从官方已发行的 Release 包拉取完整的 iOS 16.5 SDK
+          mkdir -p $HOME/theos/sdks
+          curl -LO https://github.com/theos/sdks/releases/download/v1.0/iPhoneOS16.5.sdk.tar.xz
+          tar -xf iPhoneOS16.5.sdk.tar.xz -C $HOME/theos/sdks/
+          rm iPhoneOS16.5.sdk.tar.xz
 
       - name: Build Package
         run: |
-          # 动态匹配现有的 SDK 路径并补全 PrivateFrameworks 搜索路径
-          SDK_PATH=$(ls -d $HOME/theos/sdks/iPhoneOS*.sdk | head -n 1)
-          EXTRA_FLAGS="-F${SDK_PATH}/System/Library/PrivateFrameworks"
-
           if [ -f Makefile ]; then
-            make package FINALPACKAGE=1 ADDITIONAL_CFLAGS="$EXTRA_FLAGS" ADDITIONAL_LDFLAGS="$EXTRA_FLAGS"
+            make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0
           elif [ -d Tweak ] && [ -f Tweak/Makefile ]; then
-            cd Tweak && make package FINALPACKAGE=1 ADDITIONAL_CFLAGS="$EXTRA_FLAGS" ADDITIONAL_LDFLAGS="$EXTRA_FLAGS"
+            cd Tweak && make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0
           else
-            find . -name Makefile -execdir make package FINALPACKAGE=1 ADDITIONAL_CFLAGS="$EXTRA_FLAGS" ADDITIONAL_LDFLAGS="$EXTRA_FLAGS" \;
+            find . -name Makefile -execdir make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 \;
           fi
 
       - name: Upload DEB
