@@ -12,15 +12,15 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Theos & Private SDKs
+      - name: Install Theos & SDKs
         run: |
+          sudo mkdir -p /opt
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          sudo ln -s $HOME/theos /opt/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+          
           rm -rf $HOME/theos/sdks
-          curl -LO https://github.com/theos/sdks/archive/refs/heads/master.tar.gz
-          mkdir -p $HOME/theos/sdks
-          tar -xzf master.tar.gz -C $HOME/theos/sdks --strip-components=1
-          rm master.tar.gz
+          git clone --depth=1 https://github.com/hexedtext/sdks.git $HOME/theos/sdks
 
       - name: Build Package
         run: |
