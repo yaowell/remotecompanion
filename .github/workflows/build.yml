@@ -22,20 +22,23 @@ jobs:
           sudo ln -s $HOME/theos /opt/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-          # 从官方已发行的 Release 包拉取完整的 iOS 16.5 SDK
+          # 直接浅克隆 theos/sdks 仓库，稳妥获取完整的 iPhoneOS16.5.sdk
+          git clone --depth=1 https://github.com/theos/sdks.git $HOME/sdks-repo
           mkdir -p $HOME/theos/sdks
-          curl -LO https://github.com/theos/sdks/releases/download/v1.0/iPhoneOS16.5.sdk.tar.xz
-          tar -xf iPhoneOS16.5.sdk.tar.xz -C $HOME/theos/sdks/
-          rm iPhoneOS16.5.sdk.tar.xz
+          cp -R $HOME/sdks-repo/iPhoneOS16.5.sdk $HOME/theos/sdks/
+          rm -rf $HOME/sdks-repo
 
       - name: Build Package
         run: |
+          SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
+          BUILD_FLAGS="FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT=$SDK_PATH"
+
           if [ -f Makefile ]; then
-            make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0
+            make package $BUILD_FLAGS
           elif [ -d Tweak ] && [ -f Tweak/Makefile ]; then
-            cd Tweak && make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0
+            cd Tweak && make package $BUILD_FLAGS
           else
-            find . -name Makefile -execdir make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 \;
+            find . -name Makefile -execdir make package $BUILD_FLAGS \;
           fi
 
       - name: Upload DEB
