@@ -1,6 +1,9 @@
 name: Build DEB
 
 on:
+  push:
+    branches:
+      - '*'
   workflow_dispatch:
 
 jobs:
@@ -20,7 +23,7 @@ jobs:
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
           
           rm -rf $HOME/theos/sdks
-          git clone --depth=1 https://github.com/hexedtext/sdks.git $HOME/theos/sdks
+          git clone --depth=1 https://github.com/xyv/sdks.git $HOME/theos/sdks
 
       - name: Build Package
         run: |
