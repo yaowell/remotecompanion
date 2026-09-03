@@ -15,24 +15,28 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Theos & SDKs
+      - name: Install Theos & Official SDKs
         run: |
           sudo mkdir -p /opt
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
           sudo ln -s $HOME/theos /opt/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-          
+
           rm -rf $HOME/theos/sdks
-          git clone --depth=1 https://github.com/xyv/sdks.git $HOME/theos/sdks
+          git clone --depth=1 https://github.com/theos/sdks.git $HOME/theos/sdks
 
       - name: Build Package
         run: |
+          # 动态匹配现有的 SDK 路径并补全 PrivateFrameworks 搜索路径
+          SDK_PATH=$(ls -d $HOME/theos/sdks/iPhoneOS*.sdk | head -n 1)
+          EXTRA_FLAGS="-F${SDK_PATH}/System/Library/PrivateFrameworks"
+
           if [ -f Makefile ]; then
-            make package FINALPACKAGE=1
+            make package FINALPACKAGE=1 ADDITIONAL_CFLAGS="$EXTRA_FLAGS" ADDITIONAL_LDFLAGS="$EXTRA_FLAGS"
           elif [ -d Tweak ] && [ -f Tweak/Makefile ]; then
-            cd Tweak && make package FINALPACKAGE=1
+            cd Tweak && make package FINALPACKAGE=1 ADDITIONAL_CFLAGS="$EXTRA_FLAGS" ADDITIONAL_LDFLAGS="$EXTRA_FLAGS"
           else
-            find . -name Makefile -execdir make package FINALPACKAGE=1 \;
+            find . -name Makefile -execdir make package FINALPACKAGE=1 ADDITIONAL_CFLAGS="$EXTRA_FLAGS" ADDITIONAL_LDFLAGS="$EXTRA_FLAGS" \;
           fi
 
       - name: Upload DEB
