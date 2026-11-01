@@ -30,21 +30,48 @@ jobs:
           mkdir -p $HOME/theos/sdks
           cp -R $HOME/sdks-repo/iPhoneOS16.5.sdk $HOME/theos/sdks/
           rm -rf $HOME/sdks-repo
-          rm -rf $HOME/theos/include/xpc
+
+          # 关键大招：在 Theos 的 include 路径下建立标准的 xpc.h 桥接头文件
+          mkdir -p $HOME/theos/include/xpc
+          cat << 'EOF' > $HOME/theos/include/xpc/xpc.h
+          #ifndef __XPC_XPC_H__
+          #define __XPC_XPC_H__
+
+          #include <stddef.h>
+          #include <stdint.h>
+          #include <stdbool.h>
+
+          #ifdef __cplusplus
+          extern "C" {
+          #endif
+
+          typedef void* xpc_object_t;
+          typedef void* xpc_connection_t;
+          typedef void (^xpc_handler_t)(xpc_object_t object);
+
+          xpc_object_t xpc_dictionary_create(const char *const *keys, xpc_object_t *values, size_t count);
+          void xpc_object_set_value(xpc_object_t xdict, const char *key, xpc_object_t value);
+          const char *xpc_dictionary_get_string(xpc_object_t xdict, const char *key);
+          int64_t xpc_dictionary_get_int64(xpc_object_t xdict, const char *key);
+          bool xpc_dictionary_get_bool(xpc_object_t xdict, const char *key);
+
+          #ifdef __cplusplus
+          }
+          #endif
+
+          #endif
+          EOF
 
       - name: Build Package
         run: |
           SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
-          
-          # 核心修复：将带有空格的编译参数整体作为变量传入，并在执行 make 时加上双引号 "$BUILD_FLAGS" 防止参数被拆开
-          export ADDITIONAL_CFLAGS="-fno-modules"
 
           if [ -f Makefile ]; then
-            make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules"
+            make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules -I$HOME/theos/include"
           elif [ -d Tweak ] && [ -f Tweak/Makefile ]; then
-            cd Tweak && make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules"
+            cd Tweak && make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules -I$HOME/theos/include"
           else
-            find . -name Makefile -execdir make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules" \;
+            find . -name Makefile -execdir make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules -I$HOME/theos/include" \;
           fi
 
       - name: Upload DEB
