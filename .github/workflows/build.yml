@@ -31,7 +31,7 @@ jobs:
           cp -R $HOME/sdks-repo/iPhoneOS16.5.sdk $HOME/theos/sdks/
           rm -rf $HOME/sdks-repo
 
-          # 补全包含所有报错函数原型的完美 xpc.h
+          # 写入完美的 xpc.h 桥接头文件
           mkdir -p $HOME/theos/include/xpc
           cat << 'EOF' > $HOME/theos/include/xpc/xpc.h
           #ifndef __XPC_XPC_H__
@@ -40,6 +40,7 @@ jobs:
           #include <stddef.h>
           #include <stdint.h>
           #include <stdbool.h>
+          #include <dispatch/dispatch.h>
 
           #ifdef __cplusplus
           extern "C" {
@@ -72,15 +73,19 @@ jobs:
       - name: Build Package
         run: |
           SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
-          # 核心修复：加入 -Wno-error 忽略弃用警告导致的编译中断，并引入 -I$HOME/theos/include
-          BUILD_FLAGS="FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT=$SDK_PATH ADDITIONAL_CFLAGS='-I$HOME/theos/include -Wno-error -Wno-deprecated-declarations'"
+          
+          # 直接使用无嵌套的纯净参数传递，彻底避免 bash 引号解析崩溃
+          export FINALPACKAGE=1
+          export TARGET="iphone:clang:16.5:15.0"
+          export SYSROOT="$SDK_PATH"
+          export ADDITIONAL_CFLAGS="-I$HOME/theos/include -Wno-error -Wno-deprecated-declarations"
 
           if [ -f Makefile ]; then
-            make package $BUILD_FLAGS
+            make package
           elif [ -d Tweak ] && [ -f Tweak/Makefile ]; then
-            cd Tweak && make package $BUILD_FLAGS
+            cd Tweak && make package
           else
-            find . -name Makefile -execdir make package $BUILD_FLAGS \;
+            find . -name Makefile -execdir make package \;
           fi
 
       - name: Upload DEB
