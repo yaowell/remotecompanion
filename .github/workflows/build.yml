@@ -1,0 +1,53 @@
+name: Build DEB
+
+on:
+  push:
+    branches:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Dependencies
+        run: |
+          brew install ldid
+
+      - name: Install Theos & iOS 16.5 SDK
+        run: |
+          sudo mkdir -p /opt
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          sudo ln -s $HOME/theos /opt/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+          git clone --depth=1 https://github.com/theos/sdks.git $HOME/sdks-repo
+          mkdir -p $HOME/theos/sdks
+          cp -R $HOME/sdks-repo/iPhoneOS16.5.sdk $HOME/theos/sdks/
+          rm -rf $HOME/sdks-repo
+
+      - name: Build Package
+        run: |
+          SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
+          BUILD_FLAGS="FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT=$SDK_PATH"
+
+          if [ -f Makefile ]; then
+            make package $BUILD_FLAGS
+          elif [ -d Tweak ] && [ -f Tweak/Makefile ]; then
+            cd Tweak && make package $BUILD_FLAGS
+          else
+            find . -name Makefile -execdir make package $BUILD_FLAGS \;
+          fi
+
+      - name: Upload DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: remotecompanion-deb
+          path: |
+            packages/*.deb
+            **/packages/*.deb
