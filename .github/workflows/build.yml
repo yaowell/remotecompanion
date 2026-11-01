@@ -30,22 +30,21 @@ jobs:
           mkdir -p $HOME/theos/sdks
           cp -R $HOME/sdks-repo/iPhoneOS16.5.sdk $HOME/theos/sdks/
           rm -rf $HOME/sdks-repo
-
-          # 清理掉之前所有的临时 xpc 干扰文件
           rm -rf $HOME/theos/include/xpc
 
       - name: Build Package
         run: |
           SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
-          # 核心大招：用 -fno-modules -Xclang -fno-implicit-modules 完全关掉 Clang 模块校验，避开 NSXPCConnection 的私有头文件强校验
-          BUILD_FLAGS="FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT=$SDK_PATH ADDITIONAL_CFLAGS='-fno-modules -Xclang -fno-implicit-modules'"
+          
+          # 核心修复：将带有空格的编译参数整体作为变量传入，并在执行 make 时加上双引号 "$BUILD_FLAGS" 防止参数被拆开
+          export ADDITIONAL_CFLAGS="-fno-modules"
 
           if [ -f Makefile ]; then
-            make package $BUILD_FLAGS
+            make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules"
           elif [ -d Tweak ] && [ -f Tweak/Makefile ]; then
-            cd Tweak && make package $BUILD_FLAGS
+            cd Tweak && make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules"
           else
-            find . -name Makefile -execdir make package $BUILD_FLAGS \;
+            find . -name Makefile -execdir make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules" \;
           fi
 
       - name: Upload DEB
