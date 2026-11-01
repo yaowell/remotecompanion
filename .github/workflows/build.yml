@@ -31,7 +31,7 @@ jobs:
           cp -R $HOME/sdks-repo/iPhoneOS16.5.sdk $HOME/theos/sdks/
           rm -rf $HOME/sdks-repo
 
-          # 关键大招：在 Theos 的 include 路径下建立标准的 xpc.h 桥接头文件
+          # 写入完美的、包含 NSXPCConnection 所需全部基础类型的 xpc.h
           mkdir -p $HOME/theos/include/xpc
           cat << 'EOF' > $HOME/theos/include/xpc/xpc.h
           #ifndef __XPC_XPC_H__
@@ -47,6 +47,7 @@ jobs:
 
           typedef void* xpc_object_t;
           typedef void* xpc_connection_t;
+          typedef const struct _xpc_type_s *xpc_type_t;
           typedef void (^xpc_handler_t)(xpc_object_t object);
 
           xpc_object_t xpc_dictionary_create(const char *const *keys, xpc_object_t *values, size_t count);
