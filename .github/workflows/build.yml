@@ -1,4 +1,4 @@
-name: Build DEB
+Name: Build DEB
 
 on:
   push:
@@ -34,7 +34,8 @@ jobs:
       - name: Build Package
         run: |
           SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
-          BUILD_FLAGS="FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT=$SDK_PATH"
+          # 核心修改：在 BUILD_FLAGS 中通过 ADDITIONAL_CFLAGS 强制追加私有头文件/XPC的包含路径
+          BUILD_FLAGS="FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT=$SDK_PATH ADDITIONAL_CFLAGS='-I$HOME/theos/include/other'"
 
           if [ -f Makefile ]; then
             make package $BUILD_FLAGS
