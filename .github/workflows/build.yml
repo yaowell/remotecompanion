@@ -31,14 +31,36 @@ jobs:
           cp -R $HOME/sdks-repo/iPhoneOS16.5.sdk $HOME/theos/sdks/
           rm -rf $HOME/sdks-repo
 
-          # 清理掉之前可能残留的有问题的 xpc 文件夹
-          rm -rf $HOME/theos/include/xpc
+          # 核心修复：手动在 Theos 的 include 里构造一个基础的 xpc/xpc.h 声明，满足编译需求
+          mkdir -p $HOME/theos/include/xpc
+          cat << 'EOF' > $HOME/theos/include/xpc/xpc.h
+          #ifndef __XPC_XPC_H__
+          #define __XPC_XPC_H__
+
+          #include <stddef.h>
+          #include <stdint.h>
+          #include <stdbool.h>
+
+          CXX_HEADER BEGIN
+          typedef void* xpc_object_t;
+          typedef void* xpc_connection_t;
+          typedef void (^xpc_handler_t)(xpc_object_t object);
+
+          xpc_object_t xpc_dictionary_create(const char *const *keys, xpc_object_t *values, size_t count);
+          void xpc_object_set_value(xpc_object_t xdict, const char *key, xpc_object_t value);
+          const char *xpc_dictionary_get_string(xpc_object_t xdict, const char *key);
+          int64_t xpc_dictionary_get_int64(xpc_object_t xdict, const char *key);
+          bool xpc_dictionary_get_bool(xpc_object_t xdict, const char *key);
+
+          CXX_HEADER END
+
+          #endif
+          EOF
 
       - name: Build Package
         run: |
           SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
-          # 核心修复：添加 -fno-modules 关闭 Clang 严格模块检查，避免 xpc.h 触发 Foundation 连锁崩溃
-          BUILD_FLAGS="FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT=$SDK_PATH ADDITIONAL_CFLAGS='-fno-modules'"
+          BUILD_FLAGS="FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT=$SDK_PATH ADDITIONAL_CFLAGS='-I$HOME/theos/include'"
 
           if [ -f Makefile ]; then
             make package $BUILD_FLAGS
