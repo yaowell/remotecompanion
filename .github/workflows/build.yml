@@ -31,7 +31,7 @@ jobs:
           cp -R $HOME/sdks-repo/iPhoneOS16.5.sdk $HOME/theos/sdks/
           rm -rf $HOME/sdks-repo
 
-          # 核心修复：手动在 Theos 的 include 里构造一个基础的 xpc/xpc.h 声明，满足编译需求
+          # 核心修复：写入绝对干净、合法的标准 C 语言 xpc.h 声明，避免任何宏语法冲突
           mkdir -p $HOME/theos/include/xpc
           cat << 'EOF' > $HOME/theos/include/xpc/xpc.h
           #ifndef __XPC_XPC_H__
@@ -41,7 +41,10 @@ jobs:
           #include <stdint.h>
           #include <stdbool.h>
 
-          CXX_HEADER BEGIN
+          #ifdef __cplusplus
+          extern "C" {
+          #endif
+
           typedef void* xpc_object_t;
           typedef void* xpc_connection_t;
           typedef void (^xpc_handler_t)(xpc_object_t object);
@@ -52,7 +55,9 @@ jobs:
           int64_t xpc_dictionary_get_int64(xpc_object_t xdict, const char *key);
           bool xpc_dictionary_get_bool(xpc_object_t xdict, const char *key);
 
-          CXX_HEADER END
+          #ifdef __cplusplus
+          }
+          #endif
 
           #endif
           EOF
