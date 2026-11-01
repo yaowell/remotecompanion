@@ -31,15 +31,14 @@ jobs:
           cp -R $HOME/sdks-repo/iPhoneOS16.5.sdk $HOME/theos/sdks/
           rm -rf $HOME/sdks-repo
 
-          # 核心修复：在 Theos 的 include 目录中创建 xpc 文件夹并补全 xpc.h 头文件引用
-          mkdir -p $HOME/theos/include/xpc
-          echo '#include_next <xpc/xpc.h>' > $HOME/theos/include/xpc/xpc.h
-          # 如果需要更完整的定义，可以直接从系统的 libinfo 或其他开源项目引入，这里用兼容转发或者直接适配
+          # 清理掉之前可能残留的有问题的 xpc 文件夹
+          rm -rf $HOME/theos/include/xpc
 
       - name: Build Package
         run: |
           SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
-          BUILD_FLAGS="FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT=$SDK_PATH ADDITIONAL_CFLAGS='-I$HOME/theos/include'"
+          # 核心修复：添加 -fno-modules 关闭 Clang 严格模块检查，避免 xpc.h 触发 Foundation 连锁崩溃
+          BUILD_FLAGS="FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT=$SDK_PATH ADDITIONAL_CFLAGS='-fno-modules'"
 
           if [ -f Makefile ]; then
             make package $BUILD_FLAGS
