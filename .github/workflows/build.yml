@@ -31,7 +31,7 @@ jobs:
           cp -R $HOME/sdks-repo/iPhoneOS16.5.sdk $HOME/theos/sdks/
           rm -rf $HOME/sdks-repo
 
-          # 写入完美的、包含 NSXPCConnection 所需全部基础类型的 xpc.h
+          # 补全包含所有报错函数原型的完美 xpc.h
           mkdir -p $HOME/theos/include/xpc
           cat << 'EOF' > $HOME/theos/include/xpc/xpc.h
           #ifndef __XPC_XPC_H__
@@ -56,6 +56,12 @@ jobs:
           int64_t xpc_dictionary_get_int64(xpc_object_t xdict, const char *key);
           bool xpc_dictionary_get_bool(xpc_object_t xdict, const char *key);
 
+          void xpc_connection_set_event_handler(xpc_connection_t connection, xpc_handler_t handler);
+          void xpc_connection_resume(xpc_connection_t connection);
+          void xpc_connection_send_message(xpc_connection_t connection, xpc_object_t message);
+          void xpc_connection_send_barrier(xpc_connection_t connection, dispatch_block_t barrier);
+          void xpc_connection_cancel(xpc_connection_t connection);
+
           #ifdef __cplusplus
           }
           #endif
@@ -66,13 +72,15 @@ jobs:
       - name: Build Package
         run: |
           SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
+          # 核心修复：加入 -Wno-error 忽略弃用警告导致的编译中断，并引入 -I$HOME/theos/include
+          BUILD_FLAGS="FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT=$SDK_PATH ADDITIONAL_CFLAGS='-I$HOME/theos/include -Wno-error -Wno-deprecated-declarations'"
 
           if [ -f Makefile ]; then
-            make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules -I$HOME/theos/include"
+            make package $BUILD_FLAGS
           elif [ -d Tweak ] && [ -f Tweak/Makefile ]; then
-            cd Tweak && make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules -I$HOME/theos/include"
+            cd Tweak && make package $BUILD_FLAGS
           else
-            find . -name Makefile -execdir make package FINALPACKAGE=1 TARGET=iphone:clang:16.5:15.0 SYSROOT="$SDK_PATH" ADDITIONAL_CFLAGS="-fno-modules -I$HOME/theos/include" \;
+            find . -name Makefile -execdir make package $BUILD_FLAGS \;
           fi
 
       - name: Upload DEB
